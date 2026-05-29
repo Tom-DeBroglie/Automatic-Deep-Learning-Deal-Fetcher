@@ -49,6 +49,7 @@ jobs:
         env:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           RSS_URLS: ${{ secrets.RSS_URLS }}
+          BILIBILI_UIDS: ${{ secrets.BILIBILI_UIDS }}
           KEYWORDS_EXTRA: ${{ secrets.KEYWORDS_EXTRA }}
           AUTHORITY_RULES_JSON: ${{ secrets.AUTHORITY_RULES_JSON }}
           SEND_EMPTY_REPORT: ${{ inputs.send_empty_report || 'false' }}
