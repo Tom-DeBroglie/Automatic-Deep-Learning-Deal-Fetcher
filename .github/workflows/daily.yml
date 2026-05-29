@@ -1,0 +1,71 @@
+name: Daily Deep Learning Promo Monitor
+
+on:
+  workflow_dispatch:
+    inputs:
+      send_empty_report:
+        description: "没有新活动时是否也推送一条空报告；测试时建议 true"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+  schedule:
+    # GitHub Actions 的 cron 使用 UTC 时间。00:10 UTC ≈ 北京/新加坡 08:10。
+    # 不设在整点，减少 GitHub 高峰期排队延迟。
+    - cron: "10 0 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dl-promo-monitor
+  cancel-in-progress: false
+
+jobs:
+  run-monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run monitor
+        env:
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          RSS_URLS: ${{ secrets.RSS_URLS }}
+          KEYWORDS_EXTRA: ${{ secrets.KEYWORDS_EXTRA }}
+          AUTHORITY_RULES_JSON: ${{ secrets.AUTHORITY_RULES_JSON }}
+          SEND_EMPTY_REPORT: ${{ inputs.send_empty_report || 'false' }}
+          LOOKBACK_DAYS_FIRST_RUN: "7"
+          MAX_ITEMS_PER_FEED: "40"
+          REQUIRE_VERIFIED_FOR_LOW_AUTHORITY_SINGLE_SOURCE: "true"
+        run: |
+          python dl_promo_monitor.py --send-now
+
+      - name: Commit updated state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/state.json data/sent_promos.json data/latest_report.md || true
+          if git diff --staged --quiet; then
+            echo "No state changes to commit."
+          else
+            git commit -m "chore: update promo monitor state [skip ci]"
+            git push
+          fi

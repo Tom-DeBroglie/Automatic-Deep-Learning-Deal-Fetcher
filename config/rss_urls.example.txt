@@ -1,0 +1,11 @@
+# 每行一个 RSS 地址。正式运行建议把这些内容放到 GitHub Secrets 的 RSS_URLS 里。
+# 微信公众号：用 WeWe RSS 生成，例如：
+# http://你的服务器IP:4000/feeds/MP_WXS_xxxxxxxxxxxx.rss
+
+# B站：用 RSSHub，例如：
+# https://rsshub.app/bilibili/user/video/UP主UID
+
+# 知乎：用 RSSHub，例如：
+# https://rsshub.app/zhihu/people/answers/用户token
+
+# 小红书：如果你的 RSSHub 实例支持，可填对应用户 RSS。
