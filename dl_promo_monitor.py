@@ -28,7 +28,7 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlencode
 
 import feedparser
 import requests
@@ -259,6 +259,181 @@ def get_rss_urls() -> List[str]:
             unique.append(u)
     return unique
 
+def get_bilibili_uids() -> List[str]:
+    """读取 GitHub Secret / 环境变量 BILIBILI_UIDS，每行一个 B站 UP 主 UID。"""
+    raw = os.getenv("BILIBILI_UIDS", "")
+    uids = []
+    seen = set()
+    for item in split_env_list(raw):
+        uid = re.sub(r"\D", "", item)
+        if uid and uid not in seen:
+            seen.add(uid)
+            uids.append(uid)
+    return uids
+
+
+def bili_headers(uid: str = "") -> dict:
+    return {
+        "User-Agent": USER_AGENT,
+        "Referer": f"https://space.bilibili.com/{uid}" if uid else "https://www.bilibili.com/",
+        "Origin": "https://space.bilibili.com",
+        "Accept": "application/json, text/plain, */*",
+    }
+
+
+def bili_api_json(url: str, params: dict, uid: str) -> dict:
+    resp = requests.get(url, params=params, headers=bili_headers(uid), timeout=25)
+    resp.raise_for_status()
+    data = resp.json()
+    if data.get("code") != 0:
+        raise RuntimeError(f"Bilibili API code={data.get('code')} message={data.get('message')}")
+    return data
+
+
+def fetch_bilibili_dynamic(uid: str, max_items: int) -> Tuple[List[dict], Optional[str]]:
+    """尝试从 B站空间动态 API 抓取 UP 主最新动态/视频。"""
+    url = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space"
+    params = {
+        "host_mid": uid,
+        "platform": "web",
+        "features": "itemOpusStyle,listOnlyfans,opusBigCover,onlyfansVote",
+        "timezone_offset": "-480",
+    }
+
+    try:
+        data = bili_api_json(url, params, uid)
+        items = data.get("data", {}).get("items", []) or []
+        rows: List[dict] = []
+
+        for it in items[:max_items]:
+            modules = it.get("modules", {}) or {}
+            author = modules.get("module_author", {}) or {}
+            dynamic = modules.get("module_dynamic", {}) or {}
+            major = dynamic.get("major") or {}
+            desc_obj = dynamic.get("desc") or {}
+
+            pub_ts = author.get("pub_ts") or it.get("pub_ts") or int(time.time())
+            pub = datetime.fromtimestamp(int(pub_ts), tz=timezone.utc)
+
+            source_name = clean_text(author.get("name", f"B站UP主{uid}"), 100)
+            dyn_id = str(it.get("id_str") or it.get("id") or "")
+
+            title = ""
+            link = f"https://t.bilibili.com/{dyn_id}" if dyn_id else f"https://space.bilibili.com/{uid}/dynamic"
+            parts = []
+
+            archive = major.get("archive") if isinstance(major, dict) else None
+            opus = major.get("opus") if isinstance(major, dict) else None
+            article = major.get("article") if isinstance(major, dict) else None
+
+            if archive:
+                title = archive.get("title") or ""
+                bvid = archive.get("bvid") or ""
+                link = archive.get("jump_url") or (f"https://www.bilibili.com/video/{bvid}" if bvid else link)
+                parts.extend([title, archive.get("desc") or ""])
+
+            elif opus:
+                title = opus.get("title") or ""
+                summary = opus.get("summary", {}) if isinstance(opus.get("summary"), dict) else {}
+                parts.extend([title, summary.get("text") or ""])
+                if opus.get("jump_url"):
+                    link = "https:" + opus["jump_url"] if opus["jump_url"].startswith("//") else opus["jump_url"]
+
+            elif article:
+                title = article.get("title") or ""
+                link = article.get("jump_url") or link
+                parts.extend([title, article.get("desc") or ""])
+
+            desc_text = desc_obj.get("text") if isinstance(desc_obj, dict) else ""
+            if not title:
+                title = clean_text(desc_text, 80) or f"B站动态 {dyn_id or uid}"
+
+            parts.append(desc_text or "")
+            text = clean_text(" ".join([p for p in parts if p]), 6000)
+
+            uniq = hashlib.sha256((link or title + pub.isoformat()).encode("utf-8", "ignore")).hexdigest()[:24]
+
+            rows.append({
+                "id": uniq,
+                "title": clean_text(title, 300) or "无标题",
+                "link": link,
+                "published_dt": pub,
+                "published": pub.isoformat(),
+                "source_url": f"bilibili-api:dynamic:{uid}",
+                "source_name": source_name,
+                "text": text,
+            })
+
+        return rows, None
+
+    except Exception as exc:
+        return [], str(exc)
+
+
+def fetch_bilibili_app_videos(uid: str, max_items: int) -> Tuple[List[dict], Optional[str]]:
+    """备用：尝试 B站 APP 空间投稿接口，不依赖 RSSHub。"""
+    url = "https://api.bilibili.com/x/v2/space/archive/cursor"
+    params = {
+        "vmid": uid,
+        "ps": min(max_items, 30),
+        "pn": 1,
+        "order": "pubdate",
+    }
+
+    try:
+        data = bili_api_json(url, params, uid)
+        vlist = data.get("data", {}).get("item", []) or []
+        rows: List[dict] = []
+
+        for v in vlist[:max_items]:
+            pub_ts = v.get("ctime") or v.get("created") or int(time.time())
+            pub = datetime.fromtimestamp(int(pub_ts), tz=timezone.utc)
+
+            title = clean_text(v.get("title", ""), 300) or "无标题"
+            bvid = v.get("bvid") or ""
+            aid = v.get("param") or v.get("aid") or ""
+
+            if bvid:
+                link = f"https://www.bilibili.com/video/{bvid}"
+            elif aid:
+                link = f"https://www.bilibili.com/video/av{aid}"
+            else:
+                link = f"https://space.bilibili.com/{uid}"
+
+            desc = clean_text(v.get("desc", "") or v.get("intro", ""), 3000)
+            author = clean_text(v.get("author", f"B站UP主{uid}"), 100)
+            text = clean_text(" ".join([title, desc]), 6000)
+
+            uniq = hashlib.sha256((link or title + pub.isoformat()).encode("utf-8", "ignore")).hexdigest()[:24]
+
+            rows.append({
+                "id": uniq,
+                "title": title,
+                "link": link,
+                "published_dt": pub,
+                "published": pub.isoformat(),
+                "source_url": f"bilibili-api:archive:{uid}",
+                "source_name": author,
+                "text": text,
+            })
+
+        return rows, None
+
+    except Exception as exc:
+        return [], str(exc)
+
+
+def fetch_bilibili_api(uid: str, max_items: int) -> Tuple[List[dict], Optional[str]]:
+    """B站 API 抓取入口：先动态，失败再尝试投稿接口。"""
+    rows, err1 = fetch_bilibili_dynamic(uid, max_items)
+    if rows:
+        return rows, None
+
+    rows, err2 = fetch_bilibili_app_videos(uid, max_items)
+    if rows:
+        return rows, None
+
+    return [], f"dynamic: {err1}; archive: {err2}"
 
 def get_keywords() -> List[re.Pattern]:
     extra = split_env_list(os.getenv("KEYWORDS_EXTRA", ""))
@@ -614,13 +789,16 @@ def main() -> int:
 
     DATA_DIR.mkdir(exist_ok=True)
     rss_urls = get_rss_urls()
-    if not rss_urls:
-        # No RSS sources: fail clearly because there is nothing useful to do.
-        raise RuntimeError("未配置 RSS_URLS。请在 GitHub Secrets 中添加 RSS_URLS，每行一个 RSS 链接。")
+    bilibili_uids = get_bilibili_uids()
+    
+    if not rss_urls and not bilibili_uids:
+        # No sources: fail clearly because there is nothing useful to do.
+        raise RuntimeError("未配置数据源。请在 GitHub Secrets 中添加 RSS_URLS 或 BILIBILI_UIDS。")
 
     last_check = get_last_check()
     max_items = int(os.getenv("MAX_ITEMS_PER_FEED", "40"))
     print(f"[INFO] RSS sources: {len(rss_urls)}")
+    print(f"[INFO] Bilibili API UIDs: {len(bilibili_uids)}")
     print(f"[INFO] Last check UTC: {last_check.isoformat()}")
 
     raw_items: List[dict] = []
@@ -634,6 +812,18 @@ def main() -> int:
             errors.append(msg)
         raw_items.extend(rows)
         time.sleep(0.3)
+
+    # Extra source: fetch Bilibili directly by API.
+    # This does not remove RSS; it only adds another data source.
+    for idx, uid in enumerate(bilibili_uids, 1):
+        print(f"[INFO] Fetching Bilibili API {idx}/{len(bilibili_uids)}: {uid}")
+        rows, err = fetch_bilibili_api(uid, max_items=max_items)
+        if err:
+            msg = f"bilibili-api:{uid} -> {err}"
+            print(f"[WARN] {msg}")
+            errors.append(msg)
+        raw_items.extend(rows)
+        time.sleep(0.5)
 
     print(f"[INFO] Raw items fetched: {len(raw_items)}")
     promos = filter_promos(raw_items, last_check)
