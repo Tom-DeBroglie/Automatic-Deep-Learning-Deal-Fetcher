@@ -41,32 +41,132 @@ SENT_FILE = DATA_DIR / "sent_promos.json"
 LATEST_REPORT_FILE = DATA_DIR / "latest_report.md"
 
 DEFAULT_KEYWORDS = [
-    # 中文优惠/福利
-    r"免费.*token", r"赠送.*token", r"免费.*tokens", r"白送.*token",
-    r"免费额度", r"免费调用", r"免费试用", r"限时免费", r"免费开放",
-    r"学生优惠", r"教育优惠", r"学生认证", r"校园优惠",
-    r"优惠券", r"折扣", r"羊毛", r"薅羊毛", r"福利", r"大放送",
-    r"免费.*API", r"API.*免费", r"免费.*模型", r"模型.*免费",
-    r"免费.*算力", r"免费算力", r"免费.*GPU", r"GPU.*免费",
-    r"注册送", r"新用户.*送", r"开发者.*免费", r"公测.*免费", r"内测.*免费",
-    # 英文优惠/福利
-    r"free\s+tokens?", r"free\s+credits?", r"student\s+discount",
-    r"education\s+discount", r"free\s+trial", r"limited\s+time\s+free",
-    r"free\s+api", r"free\s+gpu", r"free\s+compute",
-    # 具体产品/平台关键词常与优惠组合出现
-    r"Gemini.*(?:免费|优惠|student|free|token|credit)",
-    r"Xiaomi\s*Mimo.*(?:免费|token|credit|福利)",
-    r"Mimo.*(?:免费|token|credit|福利)",
-    r"Claude.*(?:免费|优惠|student|free|token|credit)",
-    r"ChatGPT.*(?:免费|优惠|student|free|token|credit)",
-    r"OpenAI.*(?:免费|优惠|student|free|token|credit)",
-    r"DeepSeek.*(?:免费|优惠|free|token|credit)",
-    r"通义.*(?:免费|优惠|token|福利)",
-    r"千问.*(?:免费|优惠|token|福利)",
-    r"智谱.*(?:免费|优惠|token|福利)",
-    r"Kimi.*(?:免费|优惠|token|福利)",
-    r"硅基流动.*(?:免费|优惠|token|福利)",
-    r"火山方舟.*(?:免费|优惠|token|福利)",
+    # ================= 中文：通用优惠 / 免费 / 福利 =================
+    r"免费.*token", r"赠送.*token", r"白送.*token", r"送.*tokens?", r"领.*tokens?",
+    r"免费.*tokens?", r"tokens?.*免费", r"tokens?.*赠送", r"token.*额度", r"tokens?.*额度",
+    r"免费额度", r"赠送额度", r"新人额度", r"新用户额度", r"注册.*额度", r"注册送.*额度",
+    r"调用额度", r"API额度", r"推理额度", r"模型额度", r"试用额度", r"每月额度",
+    r"免费调用", r"免费推理", r"免费生成", r"免费对话", r"免费问答", r"免费使用",
+    r"限时免费", r"限免", r"限时开放", r"免费开放", r"开放免费", r"免费上线",
+    r"免费体验", r"体验资格", r"体验名额", r"试用资格", r"免费试用", r"公测免费",
+    r"内测资格", r"公测资格", r"开放体验", r"免费申请", r"申请入口", r"领取入口",
+    r"活动入口", r"一键领取", r"免费领取", r"开放领取", r"限量领取",
+
+    # ================= 中文：优惠券 / 折扣 / 代金券 =================
+    r"优惠券", r"代金券", r"抵扣券", r"折扣券", r"算力券", r"资源券", r"云券",
+    r"体验券", r"兑换券", r"领取券", r"满减券", r"折扣码", r"优惠码", r"兑换码",
+    r"邀请码", r"领取码", r"促销码", r"邀请码.*额度", r"兑换码.*额度",
+    r"折扣", r"打折", r"半价", r"低至", r"立减", r"满减", r"减免", r"补贴",
+    r"返现", r"充值返", r"买赠", r"限时折扣", r"限时优惠", r"特惠", r"促销",
+    r"价格优惠", r"套餐优惠", r"订阅优惠", r"会员优惠",
+
+    # ================= 中文：羊毛 / 福利常见说法 =================
+    r"白嫖", r"羊毛", r"薅羊毛", r"捡漏", r"福利", r"福利包", r"礼包",
+    r"新手礼包", r"开发者礼包", r"学生礼包", r"AI福利", r"大模型福利",
+    r"模型福利", r"算力福利", r"API福利", r"开发者福利", r"限时福利",
+    r"免费福利", r"官方福利", r"隐藏福利", r"领取教程", r"申请教程",
+
+    # ================= 中文：学生 / 教育 / 校园 =================
+    r"学生优惠", r"教育优惠", r"校园优惠", r"高校优惠", r"学生认证", r"教育认证",
+    r"学术认证", r"高校认证", r"edu认证", r"学生免费", r"学生专享", r"学生福利",
+    r"学生套餐", r"学生计划", r"校园计划", r"高校计划", r"教育计划", r"学术计划",
+    r"大学生.*免费", r"大学生.*优惠", r"高校学生.*免费", r"高校学生.*优惠",
+    r"教师优惠", r"教师认证", r"科研优惠", r"科研额度", r"学术额度",
+    r"实验室.*额度", r"课题组.*额度",
+
+    # ================= 中文：开发者 / 创业 / 开源 / 比赛 =================
+    r"开发者计划", r"开发者活动", r"开发者优惠", r"开发者免费", r"开发者.*额度",
+    r"开发者.*token", r"开发者.*credits?", r"开发者.*福利", r"开发者补贴",
+    r"创业扶持", r"创业计划", r"初创.*额度", r"初创.*免费", r"初创.*优惠",
+    r"startup.*credits?", r"开源.*免费", r"开源项目.*额度", r"开源项目.*免费",
+    r"黑客松.*额度", r"黑客松.*算力", r"hackathon.*credits?", r"竞赛.*算力",
+    r"比赛.*算力", r"大赛.*算力", r"挑战赛.*额度", r"训练营.*免费",
+
+    # ================= 中文：API / 模型 / 推理 / 训练 =================
+    r"免费.*API", r"API.*免费", r"API.*福利", r"API.*优惠", r"API.*折扣", r"API.*额度",
+    r"免费.*模型", r"模型.*免费", r"模型.*福利", r"模型.*优惠", r"模型.*额度",
+    r"免费.*推理", r"推理.*免费", r"推理.*额度", r"推理.*福利", r"推理.*优惠",
+    r"免费.*训练", r"训练.*免费", r"训练.*额度", r"训练.*算力", r"训练.*优惠",
+    r"免费.*微调", r"微调.*免费", r"微调.*额度", r"微调.*优惠",
+    r"免费.*embedding", r"embedding.*免费", r"embedding.*额度", r"向量.*免费",
+    r"向量库.*免费", r"RAG.*免费", r"Agent.*免费", r"智能体.*免费",
+
+    # ================= 中文：算力 / GPU / 云资源 =================
+    r"免费.*算力", r"算力.*免费", r"算力.*福利", r"算力.*优惠", r"算力.*补贴", r"算力.*额度",
+    r"免费.*GPU", r"GPU.*免费", r"GPU.*福利", r"GPU.*优惠", r"GPU.*额度",
+    r"免费.*云服务器", r"免费.*云资源", r"云资源.*免费", r"云资源.*优惠",
+    r"免费.*云主机", r"云主机.*免费", r"云服务器.*试用", r"云服务器.*免费",
+    r"免费.*Notebook", r"Notebook.*免费", r"免费.*开发环境", r"免费.*实验环境",
+    r"Colab.*免费", r"Kaggle.*免费", r"免费.*显卡", r"显卡.*免费",
+
+    # ================= English: token / credit / quota =================
+    r"free\s+tokens?", r"bonus\s+tokens?", r"complimentary\s+tokens?", r"token\s+giveaway",
+    r"tokens?\s+giveaway", r"tokens?\s+credit", r"free\s+token\s+credits?",
+    r"free\s+credits?", r"bonus\s+credits?", r"promo\s+credits?", r"trial\s+credits?",
+    r"cloud\s+credits?", r"compute\s+credits?", r"genai\s+credits?", r"ai\s+credits?",
+    r"monthly\s+credits?", r"usage\s+credits?", r"api\s+credits?", r"inference\s+credits?",
+    r"free\s+quota", r"free\s+allowance", r"free\s+usage", r"free\s+calls?",
+    r"free\s+api\s+calls?", r"free\s+inference", r"free\s+compute",
+
+    # ================= English: free / discount / coupon =================
+    r"free\s+tier", r"free\s+plan", r"free\s+access", r"free\s+trial",
+    r"limited\s+time\s+free", r"limited-time\s+free", r"free\s+for\s+limited\s+time",
+    r"trial\s+offer", r"special\s+offer", r"launch\s+offer", r"early\s+access",
+    r"discount", r"discounted", r"coupon", r"voucher", r"promo\s+code",
+    r"coupon\s+code", r"redeem\s+code", r"promotion\s+code", r"referral\s+code",
+    r"deal", r"deals", r"offer", r"offers", r"giveaway", r"grant", r"subsidy",
+    r"limited\s+offer", r"student\s+deal", r"developer\s+deal",
+
+    # ================= English: student / education / developer =================
+    r"student\s+discount", r"student\s+offer", r"student\s+free", r"free\s+for\s+students?",
+    r"student\s+credits?", r"student\s+plan", r"student\s+pack", r"student\s+developer\s+pack",
+    r"education\s+discount", r"education\s+offer", r"academic\s+discount", r"academic\s+credits?",
+    r"edu\s+discount", r"edu\s+offer", r"campus\s+offer",
+    r"developer\s+credits?", r"developer\s+offer", r"developer\s+program", r"developer\s+grant",
+    r"startup\s+credits?", r"startup\s+program", r"startup\s+offer",
+    r"research\s+credits?", r"research\s+grant", r"open\s+source\s+credits?",
+
+    # ================= English: API / model / GPU / cloud =================
+    r"free\s+api", r"free\s+models?", r"free\s+llm", r"free\s+ai\s+model",
+    r"free\s+gpu", r"free\s+compute", r"free\s+cloud", r"free\s+cloud\s+credits?",
+    r"gpu\s+credits?", r"compute\s+credits?", r"inference\s+credits?",
+    r"model\s+credits?", r"api\s+discount", r"gpu\s+discount", r"cloud\s+discount",
+    r"free\s+notebook", r"free\s+workspace", r"free\s+developer\s+account",
+
+    # ================= 国内平台 / 产品 + 优惠词 =================
+    r"(?:阿里云|百炼|灵积|DashScope|Model\s*Studio).*(?:免费|优惠|折扣|额度|token|tokens|福利|代金券|试用|补贴)",
+    r"(?:腾讯云|混元|Hunyuan).*(?:免费|优惠|折扣|额度|token|tokens|福利|代金券|试用|补贴)",
+    r"(?:百度|千帆|文心|ERNIE).*(?:免费|优惠|折扣|额度|token|tokens|福利|代金券|试用|补贴)",
+    r"(?:火山|火山方舟|豆包|Volcengine|Ark).*(?:免费|优惠|折扣|额度|token|tokens|福利|代金券|试用)",
+    r"(?:华为云|盘古|昇腾|ModelArts).*(?:免费|优惠|折扣|额度|token|tokens|福利|算力券|试用)",
+    r"(?:讯飞|星火|Spark).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+    r"(?:智谱|GLM|BigModel).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+    r"(?:Kimi|月之暗面|Moonshot).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+    r"(?:DeepSeek|深度求索).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+    r"(?:通义|千问|Qwen).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+    r"(?:硅基流动|SiliconFlow).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+    r"(?:魔搭|ModelScope).*(?:免费|优惠|折扣|额度|token|tokens|福利|算力|试用)",
+    r"(?:MiniMax|海螺|abab).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+    r"(?:零一万物|01\.?AI|Yi).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+    r"(?:阶跃星辰|StepFun|Step).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+    r"(?:百川|Baichuan).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+    r"(?:商汤|日日新|SenseNova).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+    r"(?:天工|昆仑万维).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+    r"(?:Xiaomi\s*Mimo|小米\s*Mimo|Mimo).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+    r"(?:秘塔|元宝|豆包|可灵|即梦).*(?:免费|优惠|折扣|额度|token|tokens|福利|试用)",
+
+    # ================= 国外平台 / 产品 + 优惠词 =================
+    r"(?:Gemini|Google\s*AI|AI\s*Studio|Vertex\s*AI|Google\s*Cloud).*(?:free|discount|credits?|tokens?|student|education|trial|offer|coupon|promo)",
+    r"(?:OpenAI|ChatGPT|GPT-?4|GPT-?5).*(?:free|discount|credits?|tokens?|student|education|trial|offer|coupon|promo)",
+    r"(?:Claude|Anthropic).*(?:free|discount|credits?|tokens?|student|education|trial|offer|coupon|promo)",
+    r"(?:GitHub|Copilot|Student\s*Developer\s*Pack).*(?:free|discount|credits?|student|education|trial|offer)",
+    r"(?:Microsoft|Azure|Azure\s*AI).*(?:free|discount|credits?|student|education|trial|offer)",
+    r"(?:AWS|Bedrock|SageMaker|Educate).*(?:free|discount|credits?|student|education|trial|offer)",
+    r"(?:Hugging\s*Face|HF).*(?:free|discount|credits?|tokens?|student|education|trial|offer|inference)",
+    r"(?:Replicate|Together\s*AI|Fireworks|Groq|Cerebras).*(?:free|discount|credits?|tokens?|student|education|trial|offer|inference)",
+    r"(?:RunPod|Modal|Lambda\s*Labs|Vast\.ai|Paperspace).*(?:free|discount|credits?|student|education|trial|offer|GPU|compute)",
+    r"(?:Colab|Kaggle|NotebookLM|Perplexity|Cursor|Windsurf|Trae|Devin).*(?:free|discount|credits?|student|education|trial|offer|coupon|promo)",
+    r"(?:Mistral|Cohere|xAI|Grok|DeepL|Notion\s*AI).*(?:free|discount|credits?|tokens?|student|education|trial|offer|coupon|promo)",
 ]
 
 PRODUCT_PATTERNS = {
