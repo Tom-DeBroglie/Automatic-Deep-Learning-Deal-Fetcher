@@ -61,11 +61,16 @@ jobs:
       - name: Commit updated state
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/state.json data/sent_promos.json data/latest_report.md || true
-          if git diff --staged --quiet; then
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+          git add data/state.json data/sent_promos.json data/latest_report.md
+      
+          if git diff --cached --quiet; then
             echo "No state changes to commit."
-          else
-            git commit -m "chore: update promo monitor state [skip ci]"
-            git push
+            exit 0
           fi
+      
+          git commit -m "chore: update promo monitor state [skip ci]"
+      
+          git pull --rebase --autostash origin main
+          git push origin main
